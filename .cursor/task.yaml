@@ -6,7 +6,7 @@ description: >
 
 settings:
   language: rust
-  edition: 2021
+  edition: 2024
   coding_style: "rustfmt + clippy"
   workspace:
     members: ["server", "client", "shared"]
