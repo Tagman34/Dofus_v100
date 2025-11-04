@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 mod game;
 mod network;
 mod ui;
@@ -50,4 +51,8 @@ fn setup_camera(mut commands: Commands) {
         transform: Transform::from_rotation(Quat::from_euler(EulerRot::XYZ, -0.5, -0.5, 0.0)),
         ..default()
     });
+=======
+fn main() {
+    println!("Hello, world!");
+>>>>>>> origin/main
 }

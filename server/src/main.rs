@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 mod game;
 mod handler;
 mod session;
@@ -78,4 +79,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         }
     }
+=======
+fn main() {
+    println!("Hello, world!");
+>>>>>>> origin/main
 }

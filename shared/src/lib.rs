@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 pub mod protocol {
     use serde::{Serialize, Deserialize};
 
@@ -142,5 +143,19 @@ pub mod protocol {
         pub fn deserialize(bytes: &[u8]) -> Result<Message, bincode::Error> {
             bincode::deserialize(bytes)
         }
+=======
+pub fn add(left: u64, right: u64) -> u64 {
+    left + right
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn it_works() {
+        let result = add(2, 2);
+        assert_eq!(result, 4);
+>>>>>>> origin/main
     }
 }
