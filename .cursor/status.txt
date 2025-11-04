@@ -1,0 +1,1 @@
+﻿Project initialized - ready for multi-agent execution.

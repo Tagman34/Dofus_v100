@@ -1,0 +1,131 @@
+project: "Mini Dofus-like en Rust"
+description: >
+  Jeu tactique tour par tour simplifié inspiré de Dofus,
+  développé en Rust avec Bevy (client) et Tokio (serveur),
+  utilisant PostgreSQL pour la persistance des joueurs et des cartes.
+
+settings:
+  language: rust
+  edition: 2021
+  coding_style: "rustfmt + clippy"
+  workspace:
+    members: ["server", "client", "shared"]
+  version_control:
+    provider: github
+    main_branch: main
+
+agents:
+  - name: SharedAgent
+    role: "Définir les structures communes et la sérialisation"
+    responsibilities:
+      - Créer le module `shared/lib.rs` avec les structures de données communes
+      - Définir les messages réseau (Move, Attack, EndTurn, Sync)
+      - Gérer la sérialisation/désérialisation via Serde + Bincode
+      - Écrire les tests unitaires pour valider le protocole
+
+  - name: BackendAgent
+    role: "Développer le serveur de jeu avec Tokio"
+    responsibilities:
+      - Implémenter le serveur TCP/WebSocket (Tokio)
+      - Gérer les connexions multiples et les identifiants de session
+      - Intégrer le protocole réseau défini dans `shared`
+      - Implémenter la logique tour par tour, gestion des entités, collisions
+      - Ajouter la persistance via SQLx et PostgreSQL
+      - Rédiger la documentation du module serveur
+
+  - name: DatabaseAgent
+    role: "Configurer et gérer la base de données PostgreSQL"
+    responsibilities:
+      - Créer le schéma SQL : users, characters, maps, fights
+      - Générer les migrations SQLx
+      - Écrire les fonctions Rust pour charger/sauvegarder un joueur
+      - Configurer la connexion dans `.env` et le module `database/mod.rs`
+
+  - name: FrontendAgent
+    role: "Créer le client du jeu avec Bevy"
+    responsibilities:
+      - Initialiser une fenêtre Bevy avec caméra isométrique
+      - Charger une carte 10x10 simple (JSON ou hardcodée)
+      - Afficher les personnages et animer leurs déplacements
+      - Gérer les entrées clavier/souris pour bouger ou attaquer
+      - Connecter le client au serveur via TCP/WebSocket
+      - Afficher l’état du monde reçu du serveur
+      - Ajouter une interface minimale avec bevy_egui
+
+  - name: TestAgent
+    role: "Validation et intégration continue"
+    responsibilities:
+      - Écrire des tests unitaires et d’intégration (cargo test)
+      - Vérifier le formatage (cargo fmt) et les warnings (cargo clippy)
+      - S’assurer que le build passe sur toutes les cibles
+      - Mettre à jour le README et la documentation automatique avec rustdoc
+
+workflow:
+  - step: "Initialisation du projet"
+    tasks:
+      - Créer la structure du workspace Rust (`server/`, `client/`, `shared/`)
+      - Configurer `Cargo.toml` pour chaque module
+      - Générer les fichiers `main.rs` et `lib.rs` de base
+      - Ajouter les dépendances (tokio, bevy, serde, sqlx, bincode)
+      - Vérifier la compilation globale du workspace
+
+  - step: "Protocole réseau"
+    tasks:
+      - Définir les structures Message, PlayerState, WorldState
+      - Implémenter sérialisation et désérialisation
+      - Tester la compatibilité client/serveur avec SharedAgent
+
+  - step: "Serveur"
+    tasks:
+      - Implémenter la boucle principale `tokio::select!`
+      - Gérer la réception et l’envoi de messages
+      - Ajouter un gestionnaire d’événements (move, attack, end_turn)
+      - Gérer la logique du monde et des entités
+      - Ajouter la sauvegarde du joueur (SQLx)
+
+  - step: "Client"
+    tasks:
+      - Créer une scène Bevy simple avec grille isométrique
+      - Ajouter sprites et déplacements par case
+      - Intégrer la communication avec le serveur
+      - Afficher les tours, actions et animations
+      - Ajouter HUD et interface minimale (bevy_egui)
+
+  - step: "Combat tour par tour"
+    tasks:
+      - Gérer le système de tours et points d’action (PA/PM)
+      - Implémenter attaque à portée, dégâts et mort
+      - Synchroniser l’état du combat entre les clients
+      - Afficher la victoire/défaite
+
+  - step: "Base de données"
+    tasks:
+      - Créer les tables users, characters, maps
+      - Sauvegarder et charger l’état du joueur
+      - Implémenter la connexion sécurisée SQLx
+      - Ajouter tests sur les opérations CRUD
+
+  - step: "Tests & Documentation"
+    tasks:
+      - Écrire tests unitaires Rust pour chaque module
+      - Générer rustdoc automatique
+      - Vérifier lint et formatage
+      - Générer un README clair expliquant le lancement
+
+execution:
+  strategy: parallel
+  agents_per_step: 3
+  allow_cross_agent_collaboration: true
+  sync_after_each_step: true
+  continue_on_error: false
+
+completion:
+  on_success:
+    - message: >
+        ✅ Projet Dofus-like minimal construit avec succès !
+        Les modules client, serveur et base de données sont prêts.
+        Compilez avec `cargo run -p server` et `cargo run -p client`.
+  on_failure:
+    - message: >
+        ⚠️ Une erreur est survenue durant la génération.
+        Consultez les logs d’agents dans `.cursor/logs/` pour corriger.

@@ -1,0 +1,77 @@
+{
+    "project_name": "Mini Dofus-like en Rust",
+    "description": "Prototype tactique tour par tour inspiré de Dofus, en Rust avec Bevy (client) et Tokio (serveur).",
+    "language": "rust",
+    "edition": "2021",
+    "workspace": {
+      "members": ["server", "client", "shared"]
+    },
+    "repository": {
+      "provider": "github",
+      "default_branch": "main",
+      "auto_commit": true,
+      "commit_message_template": "[Cursor Agent] {agent_name}: {task_summary}"
+    },
+    "agents": {
+      "SharedAgent": {
+        "focus": ["shared/lib.rs"],
+        "priority": 1,
+        "coding_style": {
+          "formatter": "rustfmt",
+          "linter": "clippy"
+        }
+      },
+      "BackendAgent": {
+        "focus": ["server/src/**"],
+        "priority": 2,
+        "env": {
+          "RUST_LOG": "server=info"
+        }
+      },
+      "DatabaseAgent": {
+        "focus": ["server/src/database/**", "migrations/**"],
+        "priority": 3,
+        "env": {
+          "DATABASE_URL": "postgres://user:password@localhost:5432/dofuslike"
+        }
+      },
+      "FrontendAgent": {
+        "focus": ["client/src/**"],
+        "priority": 2,
+        "coding_style": {
+          "formatter": "rustfmt"
+        }
+      },
+      "TestAgent": {
+        "focus": ["**/*.rs", "!target/**"],
+        "priority": 1,
+        "run_after_each_step": true,
+        "commands": [
+          "cargo fmt --all",
+          "cargo clippy --all-targets --all-features -- -D warnings",
+          "cargo test --workspace"
+        ]
+      }
+    },
+    "execution": {
+      "parallel_agents": true,
+      "auto_merge_on_success": true,
+      "sync_after_each_step": true,
+      "max_concurrent_steps": 3,
+      "continue_on_error": false
+    },
+    "rules": {
+      "commit_policy": "atomic",
+      "branching_model": "feature-per-agent",
+      "file_conflict_resolution": "prefer-newest",
+      "documentation_standard": "rustdoc"
+    },
+    "style_guide": {
+      "indentation": "4_spaces",
+      "line_length": 120,
+      "naming_convention": "snake_case",
+      "comment_style": "/// pour documentation, // pour inline",
+      "error_handling": "Result<T, E> + anyhow"
+    }
+  }
+  
