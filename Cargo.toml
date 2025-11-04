@@ -1,2 +1,12 @@
+<<<<<<< HEAD
 [workspace]
 members = ["server", "client", "shared"]
+=======
+<<<<<<< HEAD
+[workspace]
+members = ["server", "client", "shared"]
+=======
+﻿[workspace]
+members = ["server", "client", "shared"]
+>>>>>>> origin/main
+>>>>>>> df607ba4828db16e8f21f106df1e1970d7dff721

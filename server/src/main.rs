@@ -1,3 +1,7 @@
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+>>>>>>> df607ba4828db16e8f21f106df1e1970d7dff721
 mod game;
 mod handler;
 mod session;
@@ -78,4 +82,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         }
     }
+<<<<<<< HEAD
+=======
+=======
+fn main() {
+    println!("Hello, world!");
+>>>>>>> origin/main
+>>>>>>> df607ba4828db16e8f21f106df1e1970d7dff721
 }
