@@ -31,12 +31,25 @@ impl Default for NetworkConnection {
     }
 }
 
+/// Runtime Tokio global
+static TOKIO_RUNTIME: once_cell::sync::Lazy<tokio::runtime::Runtime> =
+    once_cell::sync::Lazy::new(|| {
+        tokio::runtime::Runtime::new().expect("Failed to create Tokio runtime")
+    });
+
 /// Système pour se connecter au serveur
 pub async fn connect_to_server(
     address: &str,
 ) -> Result<Arc<Mutex<TcpStream>>, Box<dyn std::error::Error>> {
     let stream = TcpStream::connect(address).await?;
     Ok(Arc::new(Mutex::new(stream)))
+}
+
+/// Version synchrone pour le menu
+pub fn connect_to_server_blocking(
+    address: &str,
+) -> Result<Arc<Mutex<TcpStream>>, Box<dyn std::error::Error>> {
+    TOKIO_RUNTIME.block_on(connect_to_server(address))
 }
 
 /// Système pour envoyer un message
@@ -74,7 +87,7 @@ pub async fn receive_message(
 pub fn handle_network_events(
     mut network_events: EventReader<NetworkEvent>,
     network_connection: Option<Res<NetworkConnection>>,
-    mut game_state: ResMut<crate::game::GameState>,
+    _game_state: Res<crate::game::GameState>,
 ) {
     if let Some(conn) = network_connection {
         if !conn.connected {
@@ -90,7 +103,7 @@ pub fn handle_network_events(
                             player_id: *player_id,
                             target_position: *position,
                         };
-                        tokio::spawn(async move {
+                        TOKIO_RUNTIME.spawn(async move {
                             if let Err(e) = send_message(&stream_clone, message).await {
                                 eprintln!("Erreur envoi message: {}", e);
                             }
@@ -101,15 +114,17 @@ pub fn handle_network_events(
                             attacker_id: *attacker_id,
                             target_id: *target_id,
                         };
-                        tokio::spawn(async move {
+                        TOKIO_RUNTIME.spawn(async move {
                             if let Err(e) = send_message(&stream_clone, message).await {
                                 eprintln!("Erreur envoi message: {}", e);
                             }
                         });
                     }
                     NetworkEvent::EndTurn(player_id) => {
-                        let message = Message::EndTurn { player_id: *player_id };
-                        tokio::spawn(async move {
+                        let message = Message::EndTurn {
+                            player_id: *player_id,
+                        };
+                        TOKIO_RUNTIME.spawn(async move {
                             if let Err(e) = send_message(&stream_clone, message).await {
                                 eprintln!("Erreur envoi message: {}", e);
                             }
@@ -123,10 +138,16 @@ pub fn handle_network_events(
 }
 
 /// Système pour recevoir les messages du serveur
+/// Note: Ce système est appelé à chaque frame mais ne devrait lancer qu'une seule tâche
 pub fn receive_from_server(
     network_connection: Option<Res<NetworkConnection>>,
     mut game_state: ResMut<crate::game::GameState>,
 ) {
+    // Pour éviter de lancer plusieurs tâches, on vérifie si une connexion existe
+    // mais on ne fait rien ici car la réception devrait être gérée différemment
+    // Pour l'instant, on va simplifier en ne recevant pas de messages
+    // Une meilleure implémentation utiliserait des channels ou un système d'événements
+    
     if let Some(conn) = network_connection {
         if !conn.connected {
             return;
@@ -134,35 +155,42 @@ pub fn receive_from_server(
 
         if let Some(stream) = &conn.stream {
             let stream_clone = stream.clone();
-            tokio::spawn(async move {
-                loop {
-                    match receive_message(&stream_clone).await {
-                        Ok(Some(message)) => {
-                            match message {
-                                Message::Welcome { player_id, world_state } => {
-                                    // Initialise l'état du jeu
-                                    // Note: Ceci nécessiterait un système de communication
-                                    // entre le runtime Tokio et Bevy, ce qui est complexe.
-                                    // Pour l'instant, on laisse cette partie simplifiée.
-                                    println!("Bienvenue joueur {}", player_id);
-                                }
-                                Message::Sync { world_state } => {
-                                    // Met à jour l'état du monde
-                                    // Même commentaire que ci-dessus
-                                    println!("Synchronisation reçue");
-                                }
-                                _ => {}
+            
+            // Essaie de recevoir un message de manière non-bloquante
+            // Pour une implémentation simple, on pourrait utiliser un polling
+            TOKIO_RUNTIME.spawn(async move {
+                match receive_message(&stream_clone).await {
+                    Ok(Some(message)) => {
+                        match message {
+                            Message::Welcome {
+                                player_id,
+                                world_state,
+                            } => {
+                                println!("✓ Bienvenue joueur {} !", player_id);
+                                // TODO: Mettre à jour game_state via un canal
                             }
+                            Message::Sync { world_state } => {
+                                println!("✓ Synchronisation reçue");
+                                // TODO: Mettre à jour game_state via un canal
+                            }
+                            Message::Response { success, message } => {
+                                if success {
+                                    println!("✓ {}", message);
+                                } else {
+                                    println!("✗ {}", message);
+                                }
+                            }
+                            _ => {}
                         }
-                        Ok(None) => break,
-                        Err(e) => {
-                            eprintln!("Erreur réception message: {}", e);
-                            break;
-                        }
+                    }
+                    Ok(None) => {
+                        println!("Connexion fermée par le serveur");
+                    }
+                    Err(e) => {
+                        eprintln!("Erreur réception: {}", e);
                     }
                 }
             });
         }
     }
 }
-

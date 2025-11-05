@@ -1,13 +1,17 @@
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
->>>>>>> df607ba4828db16e8f21f106df1e1970d7dff721
 mod game;
 mod network;
 mod ui;
 
 use bevy::prelude::*;
 use bevy_egui::EguiPlugin;
+
+/// États de l'application
+#[derive(Debug, Clone, Copy, Default, Eq, PartialEq, Hash, States)]
+enum AppState {
+    #[default]
+    MainMenu,
+    InGame,
+}
 
 fn main() {
     App::new()
@@ -20,10 +24,14 @@ fn main() {
             ..default()
         }))
         .add_plugins(EguiPlugin)
+        .init_state::<AppState>()
         .init_resource::<game::GameState>()
         .init_resource::<network::NetworkConnection>()
+        .init_resource::<ui::ConnectionSettings>()
         .add_event::<network::NetworkEvent>()
-        .add_systems(Startup, (setup_camera, game::setup_map))
+        .add_systems(Startup, setup_camera)
+        .add_systems(Update, ui::main_menu_system.run_if(in_state(AppState::MainMenu)))
+        .add_systems(OnEnter(AppState::InGame), game::setup_map)
         .add_systems(
             Update,
             (
@@ -32,7 +40,8 @@ fn main() {
                 network::handle_network_events,
                 network::receive_from_server,
                 ui::ui_system,
-            ),
+            )
+                .run_if(in_state(AppState::InGame)),
         )
         .run();
 }
@@ -41,7 +50,8 @@ fn main() {
 fn setup_camera(mut commands: Commands) {
     // Caméra isométrique
     commands.spawn(Camera3dBundle {
-        transform: Transform::from_xyz(5.0, 10.0, 5.0).looking_at(Vec3::new(5.0, 0.0, 5.0), Vec3::Y),
+        transform: Transform::from_xyz(5.0, 10.0, 5.0)
+            .looking_at(Vec3::new(5.0, 0.0, 5.0), Vec3::Y),
         ..default()
     });
 
@@ -51,14 +61,12 @@ fn setup_camera(mut commands: Commands) {
             illuminance: 3000.0,
             ..default()
         },
-        transform: Transform::from_rotation(Quat::from_euler(EulerRot::XYZ, -0.5, -0.5, 0.0)),
+        transform: Transform::from_rotation(Quat::from_euler(
+            EulerRot::XYZ,
+            -0.5,
+            -0.5,
+            0.0,
+        )),
         ..default()
     });
-<<<<<<< HEAD
-=======
-=======
-fn main() {
-    println!("Hello, world!");
->>>>>>> origin/main
->>>>>>> df607ba4828db16e8f21f106df1e1970d7dff721
 }

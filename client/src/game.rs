@@ -1,7 +1,5 @@
 use bevy::prelude::*;
-use bevy::mesh::primitives::Capsule3d;
-use bevy::mesh::Plane3d;
-use shared::protocol::{PlayerId, PlayerState, Position, WorldState};
+use shared::protocol::{PlayerId, Position, WorldState};
 
 /// Composant représentant un joueur sur la carte
 #[derive(Component)]
@@ -29,8 +27,8 @@ pub struct MapTile;
 /// Système pour mettre à jour l'affichage des joueurs
 pub fn update_players(
     mut commands: Commands,
-    mut game_state: ResMut<GameState>,
-    player_query: Query<(Entity, &Player, &mut Transform)>,
+    game_state: Res<GameState>,
+    mut player_query: Query<(Entity, &Player, &mut Transform)>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
@@ -45,16 +43,19 @@ pub fn update_players(
 
         // Ajoute ou met à jour les joueurs
         for player_state in &world_state.players {
-            let existing = player_query
-                .iter()
-                .find(|(_, p, _)| p.id == player_state.id);
+            let mut found = false;
+            for (_, player, mut transform) in player_query.iter_mut() {
+                if player.id == player_state.id {
+                    // Met à jour la position
+                    transform.translation.x = player_state.position.x as f32;
+                    transform.translation.z = player_state.position.y as f32;
+                    transform.translation.y = 0.5;
+                    found = true;
+                    break;
+                }
+            }
 
-            if let Some((entity, _, mut transform)) = existing {
-                // Met à jour la position
-                transform.translation.x = player_state.position.x as f32 * 1.0;
-                transform.translation.z = player_state.position.y as f32 * 1.0;
-                transform.translation.y = 0.5;
-            } else {
+            if !found {
                 // Crée un nouveau joueur
                 let color = if Some(player_state.id) == game_state.my_player_id {
                     Color::rgb(0.0, 1.0, 0.0) // Vert pour le joueur local
@@ -62,20 +63,26 @@ pub fn update_players(
                     Color::rgb(1.0, 0.0, 0.0) // Rouge pour les autres
                 };
 
-                let mesh_handle = meshes.add(Capsule3d::default());
+                // Crée une capsule simple avec mesh de base
+                let mesh_handle = meshes.add(shape::Capsule {
+                    radius: 0.3,
+                    depth: 1.0,
+                    ..default()
+                });
                 let material_handle = materials.add(StandardMaterial {
                     base_color: color,
                     ..default()
                 });
 
                 commands.spawn((
-                    Player { id: player_state.id },
+                    Player {
+                        id: player_state.id,
+                    },
                     GridPosition {
                         position: player_state.position,
                     },
-                    Mesh3d(mesh_handle),
-                    MaterialMeshBundle {
-                        mesh: mesh_handle.clone(),
+                    PbrBundle {
+                        mesh: mesh_handle,
                         material: material_handle,
                         transform: Transform::from_xyz(
                             player_state.position.x as f32,
@@ -106,7 +113,7 @@ pub fn setup_map(
                 Color::rgb(0.4, 0.6, 0.4)
             };
 
-            let mesh_handle = meshes.add(Plane3d::default().mesh().size(1.0));
+            let mesh_handle = meshes.add(shape::Plane::from_size(1.0));
             let material_handle = materials.add(StandardMaterial {
                 base_color: color,
                 ..default()
@@ -114,8 +121,7 @@ pub fn setup_map(
 
             commands.spawn((
                 MapTile,
-                Mesh3d(mesh_handle.clone()),
-                MaterialMeshBundle {
+                PbrBundle {
                     mesh: mesh_handle,
                     material: material_handle,
                     transform: Transform::from_xyz(x as f32, 0.0, y as f32),
@@ -136,7 +142,9 @@ pub fn handle_input(
         let mut moved = false;
         let mut target_position = None;
 
-        if keyboard_input.just_pressed(KeyCode::ArrowUp) || keyboard_input.just_pressed(KeyCode::KeyW) {
+        if keyboard_input.just_pressed(KeyCode::ArrowUp)
+            || keyboard_input.just_pressed(KeyCode::KeyW)
+        {
             if let Some(ref world_state) = game_state.world_state {
                 if let Some(player) = world_state.get_player(my_id) {
                     target_position = Some(Position::new(player.position.x, player.position.y - 1));
@@ -145,7 +153,9 @@ pub fn handle_input(
             }
         }
 
-        if keyboard_input.just_pressed(KeyCode::ArrowDown) || keyboard_input.just_pressed(KeyCode::KeyS) {
+        if keyboard_input.just_pressed(KeyCode::ArrowDown)
+            || keyboard_input.just_pressed(KeyCode::KeyS)
+        {
             if let Some(ref world_state) = game_state.world_state {
                 if let Some(player) = world_state.get_player(my_id) {
                     target_position = Some(Position::new(player.position.x, player.position.y + 1));
@@ -154,7 +164,9 @@ pub fn handle_input(
             }
         }
 
-        if keyboard_input.just_pressed(KeyCode::ArrowLeft) || keyboard_input.just_pressed(KeyCode::KeyA) {
+        if keyboard_input.just_pressed(KeyCode::ArrowLeft)
+            || keyboard_input.just_pressed(KeyCode::KeyA)
+        {
             if let Some(ref world_state) = game_state.world_state {
                 if let Some(player) = world_state.get_player(my_id) {
                     target_position = Some(Position::new(player.position.x - 1, player.position.y));
@@ -163,7 +175,9 @@ pub fn handle_input(
             }
         }
 
-        if keyboard_input.just_pressed(KeyCode::ArrowRight) || keyboard_input.just_pressed(KeyCode::KeyD) {
+        if keyboard_input.just_pressed(KeyCode::ArrowRight)
+            || keyboard_input.just_pressed(KeyCode::KeyD)
+        {
             if let Some(ref world_state) = game_state.world_state {
                 if let Some(player) = world_state.get_player(my_id) {
                     target_position = Some(Position::new(player.position.x + 1, player.position.y));
@@ -183,4 +197,3 @@ pub fn handle_input(
         }
     }
 }
-

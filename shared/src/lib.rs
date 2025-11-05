@@ -1,9 +1,5 @@
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
->>>>>>> df607ba4828db16e8f21f106df1e1970d7dff721
 pub mod protocol {
-    use serde::{Serialize, Deserialize};
+    use serde::{Deserialize, Serialize};
 
     /// Identifiant unique d'un joueur
     pub type PlayerId = u32;
@@ -31,8 +27,8 @@ pub mod protocol {
     pub struct PlayerState {
         pub id: PlayerId,
         pub position: Position,
-        pub action_points: u32,      // PA (Points d'Action)
-        pub movement_points: u32,     // PM (Points de Mouvement)
+        pub action_points: u32,   // PA (Points d'Action)
+        pub movement_points: u32, // PM (Points de Mouvement)
         pub health: u32,
         pub max_health: u32,
         pub is_alive: bool,
@@ -43,8 +39,8 @@ pub mod protocol {
             Self {
                 id,
                 position,
-                action_points: 6,     // PA par défaut
-                movement_points: 3,    // PM par défaut
+                action_points: 6,   // PA par défaut
+                movement_points: 3, // PM par défaut
                 health: 100,
                 max_health: 100,
                 is_alive: true,
@@ -99,9 +95,7 @@ pub mod protocol {
             player_name: String,
         },
         /// Déconnexion d'un joueur
-        Disconnect {
-            player_id: PlayerId,
-        },
+        Disconnect { player_id: PlayerId },
         /// Déplacement d'un joueur
         Move {
             player_id: PlayerId,
@@ -113,18 +107,11 @@ pub mod protocol {
             target_id: PlayerId,
         },
         /// Fin du tour d'un joueur
-        EndTurn {
-            player_id: PlayerId,
-        },
+        EndTurn { player_id: PlayerId },
         /// Synchronisation de l'état du monde depuis le serveur
-        Sync {
-            world_state: WorldState,
-        },
+        Sync { world_state: WorldState },
         /// Message de confirmation ou d'erreur
-        Response {
-            success: bool,
-            message: String,
-        },
+        Response { success: bool, message: String },
         /// Message de bienvenue avec état initial
         Welcome {
             player_id: PlayerId,
@@ -146,22 +133,124 @@ pub mod protocol {
         pub fn deserialize(bytes: &[u8]) -> Result<Message, bincode::Error> {
             bincode::deserialize(bytes)
         }
-<<<<<<< HEAD
-=======
-=======
-pub fn add(left: u64, right: u64) -> u64 {
-    left + right
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::protocol::*;
 
     #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
->>>>>>> origin/main
->>>>>>> df607ba4828db16e8f21f106df1e1970d7dff721
+    fn test_position_creation() {
+        let pos = Position::new(5, 10);
+        assert_eq!(pos.x, 5);
+        assert_eq!(pos.y, 10);
+    }
+
+    #[test]
+    fn test_position_manhattan_distance() {
+        let pos1 = Position::new(0, 0);
+        let pos2 = Position::new(3, 4);
+        assert_eq!(pos1.manhattan_distance(&pos2), 7);
+    }
+
+    #[test]
+    fn test_player_state_creation() {
+        let pos = Position::new(5, 5);
+        let player = PlayerState::new(1, pos);
+        assert_eq!(player.id, 1);
+        assert_eq!(player.position, pos);
+        assert_eq!(player.action_points, 6);
+        assert_eq!(player.movement_points, 3);
+        assert_eq!(player.health, 100);
+        assert_eq!(player.max_health, 100);
+        assert!(player.is_alive);
+    }
+
+    #[test]
+    fn test_player_state_reset_turn() {
+        let pos = Position::new(0, 0);
+        let mut player = PlayerState::new(1, pos);
+
+        // Simule l'utilisation de points
+        player.action_points = 2;
+        player.movement_points = 0;
+
+        // Réinitialise le tour
+        player.reset_turn();
+
+        assert_eq!(player.action_points, 6);
+        assert_eq!(player.movement_points, 3);
+    }
+
+    #[test]
+    fn test_world_state_creation() {
+        let world = WorldState::new(10, 10);
+        assert_eq!(world.map_width, 10);
+        assert_eq!(world.map_height, 10);
+        assert_eq!(world.current_turn, 0);
+        assert_eq!(world.turn_number, 1);
+        assert!(world.players.is_empty());
+    }
+
+    #[test]
+    fn test_world_state_get_player() {
+        let mut world = WorldState::new(10, 10);
+        let player = PlayerState::new(1, Position::new(5, 5));
+        world.players.push(player.clone());
+
+        let found = world.get_player(1);
+        assert!(found.is_some());
+        assert_eq!(found.unwrap().id, 1);
+
+        let not_found = world.get_player(999);
+        assert!(not_found.is_none());
+    }
+
+    #[test]
+    fn test_message_serialization() {
+        let message = Message::Move {
+            player_id: 1,
+            target_position: Position::new(5, 5),
+        };
+
+        let serialized = serialization::serialize(&message).unwrap();
+        assert!(!serialized.is_empty());
+
+        let deserialized = serialization::deserialize(&serialized).unwrap();
+        match deserialized {
+            Message::Move {
+                player_id,
+                target_position,
+            } => {
+                assert_eq!(player_id, 1);
+                assert_eq!(target_position, Position::new(5, 5));
+            }
+            _ => panic!("Wrong message type"),
+        }
+    }
+
+    #[test]
+    fn test_welcome_message_serialization() {
+        let world = WorldState::new(10, 10);
+        let message = Message::Welcome {
+            player_id: 1,
+            world_state: world.clone(),
+        };
+
+        let serialized = serialization::serialize(&message).unwrap();
+        let deserialized = serialization::deserialize(&serialized).unwrap();
+
+        match deserialized {
+            Message::Welcome {
+                player_id,
+                world_state,
+            } => {
+                assert_eq!(player_id, 1);
+                assert_eq!(world_state.map_width, 10);
+                assert_eq!(world_state.map_height, 10);
+            }
+            _ => panic!("Wrong message type"),
+        }
     }
 }

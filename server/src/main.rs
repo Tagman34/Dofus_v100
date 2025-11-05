@@ -1,7 +1,4 @@
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
->>>>>>> df607ba4828db16e8f21f106df1e1970d7dff721
+mod database;
 mod game;
 mod handler;
 mod session;
@@ -11,7 +8,7 @@ use crate::handler::broadcast_world_state;
 use crate::session::handle_client;
 use shared::protocol::{Message, PlayerId, Position};
 use std::sync::Arc;
-use tokio::net::{TcpListener, TcpStream};
+use tokio::net::TcpListener;
 use tokio::sync::Mutex;
 
 const DEFAULT_PORT: u16 = 8080;
@@ -21,6 +18,40 @@ const MAP_HEIGHT: i32 = 10;
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     env_logger::init();
+
+    // Initialise la connexion à la base de données (optionnel)
+    let _db_pool = if let Ok(database_url) = std::env::var("DATABASE_URL") {
+        println!("Configuration de la base de données: {}", database_url);
+        let config = database::DatabaseConfig {
+            database_url,
+            ..Default::default()
+        };
+
+        match database::create_pool(&config).await {
+            Ok(pool) => {
+                println!("✓ Connexion à la base de données établie");
+
+                // Exécute les migrations
+                if let Err(e) = database::run_migrations(&pool).await {
+                    eprintln!("⚠ Erreur lors des migrations: {}", e);
+                } else {
+                    println!("✓ Migrations de la base de données exécutées");
+                }
+
+                Some(Arc::new(pool))
+            }
+            Err(e) => {
+                eprintln!("⚠ Impossible de se connecter à la base de données: {}", e);
+                eprintln!("⚠ Le serveur démarrera sans persistance");
+                None
+            }
+        }
+    } else {
+        println!("⚠ Variable DATABASE_URL non définie");
+        println!("⚠ Le serveur démarrera sans persistance");
+        None
+    };
+
     let port = std::env::var("PORT")
         .ok()
         .and_then(|p| p.parse().ok())
@@ -28,16 +59,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let addr = format!("0.0.0.0:{}", port);
     let listener = TcpListener::bind(&addr).await?;
-    println!("Serveur Dofus-like démarré sur {}", addr);
+    println!("✓ Serveur Dofus-like démarré sur {}", addr);
 
     let game: Arc<Mutex<Game>> = Arc::new(Mutex::new(Game::new(MAP_WIDTH, MAP_HEIGHT)));
-    let (broadcast_tx, mut broadcast_rx) = tokio::sync::mpsc::unbounded_channel::<(PlayerId, Message)>();
+    let (broadcast_tx, mut broadcast_rx) =
+        tokio::sync::mpsc::unbounded_channel::<(PlayerId, Message)>();
 
     // Tâche pour gérer les broadcasts
     let broadcast_tx_clone = broadcast_tx.clone();
     let game_clone = game.clone();
     tokio::spawn(async move {
-        while let Some((player_id, message)) = broadcast_rx.recv().await {
+        while let Some((_player_id, message)) = broadcast_rx.recv().await {
             // Traite les messages de broadcast
             if let Message::Disconnect { player_id: _ } = message {
                 // Gère la déconnexion
@@ -82,11 +114,4 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         }
     }
-<<<<<<< HEAD
-=======
-=======
-fn main() {
-    println!("Hello, world!");
->>>>>>> origin/main
->>>>>>> df607ba4828db16e8f21f106df1e1970d7dff721
 }

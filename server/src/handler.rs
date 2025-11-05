@@ -1,5 +1,5 @@
 use crate::game::Game;
-use shared::protocol::{Message, PlayerId, Position};
+use shared::protocol::{Message, PlayerId};
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
@@ -10,7 +10,10 @@ pub async fn handle_message(
     game: Arc<Mutex<Game>>,
 ) -> Result<Option<Message>, String> {
     match message {
-        Message::Move { player_id: msg_player_id, target_position } => {
+        Message::Move {
+            player_id: msg_player_id,
+            target_position,
+        } => {
             if msg_player_id != player_id {
                 return Err("ID joueur incorrect".to_string());
             }
@@ -28,7 +31,10 @@ pub async fn handle_message(
             }
         }
 
-        Message::Attack { attacker_id, target_id } => {
+        Message::Attack {
+            attacker_id,
+            target_id,
+        } => {
             if attacker_id != player_id {
                 return Err("ID attaquant incorrect".to_string());
             }
@@ -46,7 +52,9 @@ pub async fn handle_message(
             }
         }
 
-        Message::EndTurn { player_id: msg_player_id } => {
+        Message::EndTurn {
+            player_id: msg_player_id,
+        } => {
             if msg_player_id != player_id {
                 return Err("ID joueur incorrect".to_string());
             }
@@ -64,12 +72,17 @@ pub async fn handle_message(
             }
         }
 
-        Message::Connect { player_id: _, player_name: _ } => {
+        Message::Connect {
+            player_id: _,
+            player_name: _,
+        } => {
             // La connexion est gérée dans main.rs
             Ok(None)
         }
 
-        Message::Disconnect { player_id: msg_player_id } => {
+        Message::Disconnect {
+            player_id: msg_player_id,
+        } => {
             if msg_player_id == player_id {
                 let mut game_guard = game.lock().await;
                 game_guard.remove_player(player_id);
@@ -100,4 +113,3 @@ pub async fn broadcast_world_state(
         let _ = broadcast_tx.send((player.id, sync_message.clone()));
     }
 }
-

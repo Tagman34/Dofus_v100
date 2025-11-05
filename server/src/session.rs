@@ -3,11 +3,13 @@ use std::sync::Arc;
 use tokio::sync::mpsc;
 
 /// Gestionnaire de session pour un client connecté
+#[allow(dead_code)]
 pub struct Session {
     pub player_id: PlayerId,
     pub sender: mpsc::UnboundedSender<Message>,
 }
 
+#[allow(dead_code)]
 impl Session {
     pub fn new(player_id: PlayerId) -> (Self, mpsc::UnboundedReceiver<Message>) {
         let (tx, rx) = mpsc::unbounded_channel();
@@ -51,9 +53,9 @@ pub async fn handle_client(
 
     let welcome_bytes = shared::protocol::serialization::serialize(&welcome)?;
     let len = welcome_bytes.len() as u32;
-    
+
     let (mut read_stream, mut write_stream) = stream.into_split();
-    
+
     // Envoie le message de bienvenue
     write_stream.write_u32_le(len).await?;
     write_stream.write_all(&welcome_bytes).await?;
@@ -89,12 +91,19 @@ pub async fn handle_client(
                     if len as usize > buffer.len() {
                         buffer.resize(len as usize, 0);
                     }
-                    if read_stream.read_exact(&mut buffer[..len as usize]).await.is_ok() {
+                    if read_stream
+                        .read_exact(&mut buffer[..len as usize])
+                        .await
+                        .is_ok()
+                    {
                         if let Ok(message) =
                             shared::protocol::serialization::deserialize(&buffer[..len as usize])
                         {
                             // Traite le message
-                            if let Ok(Some(response)) = handle_message(message.clone(), player_id, game_for_read.clone()).await {
+                            if let Ok(Some(response)) =
+                                handle_message(message.clone(), player_id, game_for_read.clone())
+                                    .await
+                            {
                                 let _ = tx_for_read.send(response);
                             }
                             // Broadcast le message pour synchronisation
@@ -116,10 +125,7 @@ pub async fn handle_client(
     }
 
     // Envoie un message de déconnexion
-    let _ = broadcast_tx.send((
-        player_id,
-        Message::Disconnect { player_id },
-    ));
+    let _ = broadcast_tx.send((player_id, Message::Disconnect { player_id }));
 
     Ok(())
 }
